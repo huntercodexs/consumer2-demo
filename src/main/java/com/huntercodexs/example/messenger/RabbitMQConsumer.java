@@ -1,60 +1,90 @@
 package com.huntercodexs.example.messenger;
 
+import com.google.gson.Gson;
+import com.huntercodexs.example.dto.OrderDTO;
+import com.huntercodexs.example.model.OrderEntity;
+import com.huntercodexs.example.repository.OrderRepository;
+import org.springframework.amqp.rabbit.annotation.Exchange;
+import org.springframework.amqp.rabbit.annotation.Queue;
+import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RabbitMQConsumer {
 
-	@RabbitListener(queues = {"queue-1-direct"})
-	public void consumerExchangeDirectQueue1(@Payload String body) {
-		System.out.println("Message from ExchangeDirectQueue1: " + body);
+	@Autowired
+	OrderRepository orderRepository;
+
+	@RabbitListener(
+			bindings = @QueueBinding(
+					exchange = @Exchange("exchange-com-direct"),
+					key = "routingKey-purchase",
+					value = @Queue("queue-purchase")))
+	public void consumerExchangeComQueuePurchase(@Payload String jsonMessage) {
+		System.out.println("Message from ExchangeComDirect->QueuePurchase: " + jsonMessage);
+		Gson gson = new Gson();
+		OrderDTO orderDTO = gson.fromJson(jsonMessage, OrderDTO.class);
+		System.out.println("Purchase DTO [Purchase]: " + orderDTO);
+
+		OrderEntity orderEntity = new OrderEntity();
+		orderEntity.setPurchaseId(orderDTO.getId());
+		orderEntity.setStatus(orderDTO.getStatus());
+		orderEntity.setValue(orderDTO.getValue());
+		orderEntity.setDatetime(orderDTO.getDatetime());
+		orderRepository.save(orderEntity);
+
+		System.out.println("[PURCHASE] Order saved successfully");
 	}
 
-	@RabbitListener(queues = {"queue-2-direct"})
-	public void consumerExchangeDirectQueue2(@Payload String body) {
-		System.out.println("Message from ExchangeDirectQueue2: " + body);
-	}
+	@RabbitListener(
+			bindings = @QueueBinding(
+					exchange = @Exchange("exchange-com-direct"),
+					key = "routingKey-order",
+					value = @Queue("queue-order")))
+	public void consumerExchangeComQueueOrder(@Payload String jsonMessage) {
+        System.out.println("Message from ExchangeComDirect->QueueOrder: " + jsonMessage);
+        Gson gson = new Gson();
+        OrderDTO orderDTO = gson.fromJson(jsonMessage, OrderDTO.class);
+        System.out.println("Purchase DTO [Order]: " + orderDTO);
 
-	@RabbitListener(queues = {"queue-3-direct"})
-	public void consumerExchangeDirectQueue3(@Payload String body) {
-		System.out.println("Message from ExchangeDirectQueue3: " + body);
-	}
+        OrderEntity orderEntity = orderRepository.findByPurchaseId(orderDTO.getId());
 
-	@RabbitListener(queues = {"queue-1-fanout"})
-	public void consumerExchangeFanoutQueue1(@Payload String body) {
-		System.out.println("Message from ExchangeFanoutQueue1: " + body);
-	}
+		if (orderEntity == null) {
+			System.out.println("Not Found");
+			return;
+		}
 
-	@RabbitListener(queues = {"queue-2-fanout"})
-	public void consumerExchangeFanoutQueue2(@Payload String body) {
-		System.out.println("Message from ExchangeFanoutQueue2: " + body);
-	}
+        orderEntity.setStatus(orderDTO.getStatus());
+        orderRepository.save(orderEntity);
 
-	@RabbitListener(queues = {"queue-3-fanout"})
-	public void consumerExchangeFanoutQueue3(@Payload String body) {
-		System.out.println("Message from ExchangeFanoutQueue3: " + body);
-	}
+        System.out.println("[ORDER] Order updated successfully");
+    }
 
-	@RabbitListener(queues = {"queue-1-topic"})
-	public void consumerExchangeTopicQueue1(@Payload String body) {
-		System.out.println("Message from ExchangeTopicQueue1: " + body);
-	}
+	@RabbitListener(
+			bindings = @QueueBinding(
+					exchange = @Exchange("exchange-com-direct"),
+					key = "routingKey-dispatch",
+					value = @Queue("queue-dispatch")))
+	public void consumerExchangeComQueueDispatch(@Payload String jsonMessage) {
+		System.out.println("Message from ExchangeComDirect->QueueDispatch: " + jsonMessage);
+		Gson gson = new Gson();
+		OrderDTO orderDTO = gson.fromJson(jsonMessage, OrderDTO.class);
+		System.out.println("Purchase DTO [Dispatch]: " + orderDTO);
 
-	@RabbitListener(queues = {"queue-2.1-topic"})
-	public void consumerExchangeTopicQueue21(@Payload String body) {
-		System.out.println("Message from ExchangeTopicQueue21: " + body);
-	}
+		OrderEntity orderEntity = orderRepository.findByPurchaseId(orderDTO.getId());
 
-	@RabbitListener(queues = {"queue-2.2-topic"})
-	public void consumerExchangeTopicQueue22(@Payload String body) {
-		System.out.println("Message from ExchangeTopicQueue22: " + body);
-	}
+		if (orderEntity == null) {
+			System.out.println("Not Found");
+			return;
+		}
 
-	@RabbitListener(queues = {"queue-3-topic"})
-	public void consumerExchangeTopicQueue3(@Payload String body) {
-		System.out.println("Message from ExchangeTopicQueue3: " + body);
+		orderEntity.setStatus(orderDTO.getStatus());
+		orderRepository.save(orderEntity);
+
+		System.out.println("[DISPATCH] Order updated successfully");
 	}
 
 }
