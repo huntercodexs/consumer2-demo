@@ -15,7 +15,7 @@ public class OrderController {
     @Autowired
     OrderRepository orderRepository;
 
-    @GetMapping("/consumer2-demo/api/v1/order/status/{purchase_id}")
+    @GetMapping("${api.endpoint.order.status}")
     public String status(@PathVariable("purchase_id") String purchaseId) {
         System.out.println("Purchase: " + purchaseId);
 
